@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 圖像生成流程圖</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-tc@5.0.18/index.css">
+    <style>
+        body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
+        .canvas-wrapper {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center center;
+            will-change: transform;
+        }
+        .mermaid { display: flex; justify-content: center; width: 100%; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border-color: rgba(51, 65, 85, 0.5);
+        }
+        .code-block::-webkit-scrollbar { height: 6px; width: 6px; }
+        .code-block::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
+        .animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 900: '#312e81' } } } }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-slate-100 to-brand-50 min-h-screen transition-colors duration-500">
+
+    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 animate-fade-in">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">AI 圖像生成工作流程</h1>
+                <p class="text-slate-500 dark:text-slate-400 mt-2 text-lg">將 Mermaid 語法即時渲染為互動式流程圖表</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="btn-zoom-in" class="glass-panel px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/80 transition shadow-sm">➕ 放大</button>
+                <button id="btn-zoom-out" class="glass-panel px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/80 transition shadow-sm">➖ 縮小</button>
+                <button id="btn-reset" class="glass-panel px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-white/80 dark:hover:bg-slate-800/80 transition shadow-sm">🎯 重置視圖</button>
+                <button id="btn-theme" class="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium shadow-lg shadow-brand-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0">🌗 切換深色模式</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in" style="animation-delay: 0.2s;">
+            <!-- Diagram Container -->
+            <div class="lg:col-span-8 relative rounded-2xl bg-white dark:bg-slate-800 shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                <div class="absolute top-3 left-4 z-10 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">即時預覽</div>
+                <div id="scroll-container" class="w-full h-[500px] overflow-auto p-8 cursor-grab active:cursor-grabbing">
+                    <div id="diagram-wrapper" class="canvas-wrapper min-h-[400px] flex items-center justify-center">
+                        <pre class="mermaid">
+flowchart LR
+    A[撰寫提示詞] --> B[AI生成圖像]
+    B --> C{檢視結果}
+    C -->|滿意| D[保存或發布圖片]
+    C -->|不滿意| E[修改提示詞並重新生成]
+    E --> A
+    B --> F[後處理：修圖/去噪/放大]
+    F --> D
+                        </pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Editor -->
+            <div class="lg:col-span-4 flex flex-col rounded-2xl bg-slate-900 shadow-xl overflow-hidden border border-slate-800">
+                <div class="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800">
+                    <div class="flex gap-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <span class="text-xs text-slate-400 font-mono">flowchart.mermaid</span>
+                </div>
+                <div class="relative flex-1">
+                    <textarea id="mermaid-input" class="code-block w-full h-full bg-slate-900 text-slate-100 p-4 font-mono text-sm resize-none focus:outline-none" spellcheck="false">flowchart LR
+    A[撰寫提示詞] --> B[AI生成圖像]
+    B --> C{檢視結果}
+    C -->|滿意| D[保存或發布圖片]
+    C -->|不滿意| E[修改提示詞並重新生成]
+    E --> A
+    B --> F[後處理：修圖/去噪/放大]
+    F --> D</textarea>
+                    <button id="btn-render" class="absolute bottom-4 right-4 bg-brand-600 hover:bg-brand-500 text-white px-3 py-1.5 rounded-md text-xs font-medium shadow transition">重新渲染 ↺</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        const diagramWrapper = document.getElementById('diagram-wrapper');
+        const mermaidInput = document.getElementById('mermaid-input');
+        const scrollContainer = document.getElementById('scroll-container');
+        
+        let zoomLevel = 1;
+        let isDark = false;
+
+        // Initial Mermaid Setup
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e0e7ff',
+                primaryTextColor: '#1e293b',
+                primaryBorderColor: '#6366f1',
+                lineColor: '#64748b',
+                secondaryColor: '#fef3c7',
+                tertiaryColor: '#dcfce7',
+                nodeBorder: '2px',
+                fontFamily: 'Noto Sans TC, sans-serif'
+            },
+            flowchart: {
+                curve: 'basis',
+                padding: 15
+            }
+        });
+
+        // Render Function
+        const renderDiagram = async (code) => {
+            const targetCode = code || mermaidInput.value;
+            try {
+                const isValid = await mermaid.parse(targetCode);
+                if (isValid) {
+                    const { svg } = await mermaid.render('mermaidSvg', targetCode);
+                    diagramWrapper.innerHTML = svg;
+                    // Re-apply current zoom
+                    diagramWrapper.style.transform = `scale(${zoomLevel})`;
+                    // Add some breathing space for the SVG
+                    const svgEl = diagramWrapper.querySelector('svg');
+                    if(svgEl) svgEl.style.maxHeight = 'none';
+                }
+            } catch (err) {
+                console.error('Mermaid syntax error:', err);
+            }
+        };
+
+        // Initial Render
+        renderDiagram(mermaidInput.value);
+
+        // Controls
+        document.getElementById('btn-zoom-in').addEventListener('click', () => {
+            zoomLevel = Math.min(zoomLevel + 0.15, 2.5);
+            diagramWrapper.style.transform = `scale(${zoomLevel})`;
+        });
+
+        document.getElementById('btn-zoom-out').addEventListener('click', () => {
+            zoomLevel = Math.max(zoomLevel - 0.15, 0.3);
+            diagramWrapper.style.transform = `scale(${zoomLevel})`;
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            zoomLevel = 1;
+            diagramWrapper.style.transform = `scale(1)`;
+            scrollContainer.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+        });
+
+        document.getElementById('btn-theme').addEventListener('click', () => {
+            isDark = !isDark;
+            document.documentElement.classList.toggle('dark', isDark);
+            
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: isDark ? 'dark' : 'base',
+                themeVariables: isDark ? {
+                    primaryColor: '#3b82f6',
+                    primaryTextColor: '#f8fafc',
+                    primaryBorderColor: '#60a5fa',
+                    lineColor: '#94a3b8',
+                    secondaryColor: '#f59e0b',
+                    tertiaryColor: '#10b981'
+                } : {
+                    primaryColor: '#e0e7ff',
+                    primaryTextColor: '#1e293b',
+                    primaryBorderColor: '#6366f1',
+                    lineColor: '#64748b',
+                    secondaryColor: '#fef3c7',
+                    tertiaryColor: '#dcfce7'
+                },
+                flowchart: { curve: 'basis', padding: 15 }
+            });
+            renderDiagram(mermaidInput.value);
+        });
+
+        document.getElementById('btn-render').addEventListener('click', () => {
+            renderDiagram();
+        });
+
+        // Drag to Scroll functionality
+        let isDown = false, startX, startY, scrollLeft, scrollTop;
+        scrollContainer.addEventListener('mousedown', (e) => {
+            isDown = true;
+            scrollContainer.style.cursor = 'grabbing';
+            startX = e.pageX - scrollContainer.offsetLeft;
+            startY = e.pageY - scrollContainer.offsetTop;
+            scrollLeft = scrollContainer.scrollLeft;
+            scrollTop = scrollContainer.scrollTop;
+        });
+        scrollContainer.addEventListener('mouseleave', () => { isDown = false; scrollContainer.style.cursor = 'grab'; });
+        scrollContainer.addEventListener('mouseup', () => { isDown = false; scrollContainer.style.cursor = 'grab'; });
+        scrollContainer.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - scrollContainer.offsetLeft;
+            const y = e.pageY - scrollContainer.offsetTop;
+            scrollContainer.scrollLeft = scrollLeft - (x - startX);
+            scrollContainer.scrollTop = scrollTop - (y - startY);
+        });
+    </script>
+</body>
+</html>
+
